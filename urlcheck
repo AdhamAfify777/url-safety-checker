@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+# URL Safety Checker
+# Coded by: Adham Afify
+
+import os
+import re
+import base64
+import urllib.parse
+from urllib.parse import urlparse
+
+# ---------- Colors ----------
+CYAN = "\033[96m"
+RED = "\033[91m"
+YELLOW = "\033[93m"
+GREEN = "\033[92m"
+RESET = "\033[0m"
+
+# ---------- Clear Screen ----------
+def clear():
+    os.system("clear")
+
+# ---------- Banner ----------
+def banner():
+    print(CYAN + """
+███████╗ █████╗ ███████╗███████╗
+██╔════╝██╔══██╗██╔════╝██╔════╝
+███████╗███████║█████╗  █████╗  
+╚════██║██╔══██║██╔══╝  ██╔══╝  
+███████║██║  ██║██║     ███████╗
+╚══════╝╚═╝  ╚═╝╚═╝     ╚══════╝
+
+        URL SAFETY CHECKER
+      Scan links before clicking
+
+        Coded by: Adham Afify
+""" + RESET)
+
+# ---------- Helpers ----------
+def is_ip(domain):
+    return re.match(r"^\d{1,3}(\.\d{1,3}){3}$", domain)
+
+def try_base64_decode(text):
+    try:
+        decoded = base64.b64decode(text).decode("utf-8")
+        if re.search(r"(login|verify|account|secure)", decoded.lower()):
+            return decoded
+    except:
+        return None
+
+# ---------- Core Logic ----------
+def analyze_url(url):
+    score = 0
+    reasons = []
+
+    if not url.startswith("http"):
+        url = "http://" + url
+
+    decoded_url = urllib.parse.unquote(url)
+    parsed = urlparse(decoded_url)
+    domain = parsed.netloc
+
+    # HTTPS check
+    if parsed.scheme != "https":
+        score += 2
+        reasons.append("No HTTPS")
+
+    # IP address check
+    if is_ip(domain):
+        score += 3
+        reasons.append("IP address used instead of domain")
+
+    # Suspicious keywords
+    suspicious_words = ["login", "verify", "secure", "update", "account", "free"]
+    for word in suspicious_words:
+        if word in decoded_url.lower():
+            score += 1
+            reasons.append(f"Suspicious keyword: {word}")
+
+    # Long URL
+    if len(decoded_url) > 75:
+        score += 1
+        reasons.append("URL is very long")
+
+    # Base64 detection
+    parts = re.findall(r"[A-Za-z0-9+/=]{8,}", decoded_url)
+    for part in parts:
+        decoded = try_base64_decode(part)
+        if decoded:
+            score += 3
+            reasons.append("Base64 encoded content detected")
+
+    return score, reasons
+
+def risk_level(score):
+    if score >= 6:
+        return RED + "HIGH RISK ❌" + RESET
+    elif score >= 3:
+        return YELLOW + "SUSPICIOUS ⚠️" + RESET
+    else:
+        return GREEN + "SAFE ✅" + RESET
+
+# ---------- Pages ----------
+def check_url_page():
+    clear()
+    banner()
+    url = input("Enter URL to check: ")
+
+    clear()
+    banner()
+    print("[*] Analyzing URL...\n")
+
+    score, reasons = analyze_url(url)
+
+    print("Risk Level :", risk_level(score))
+    print("Score      :", score)
+
+    if reasons:
+        print("\nReasons:")
+        for r in reasons:
+            print("-", r)
+    else:
+        print("\nNo suspicious signs found.")
+
+    input("\nPress Enter to return to menu...")
+
+def about_page():
+    clear()
+    banner()
+    print("""
+[ About Tool ]
+
+Name    : URL Safety Checker
+Version : 1.0
+Author  : Adham Afify
+
+Description:
+This tool analyzes URLs to detect
+potential phishing or malicious signs.
+
+Educational & defensive use only.
+""")
+    input("\nPress Enter to return to menu...")
+
+# ---------- Menu ----------
+def menu():
+    while True:
+        clear()
+        banner()
+        print("1) Check URL")
+        print("2) About tool")
+        print("3) Exit\n")
+
+        choice = input("Choose an option: ")
+
+        if choice == "1":
+            check_url_page()
+        elif choice == "2":
+            about_page()
+        elif choice == "3":
+            clear()
+            print("Goodbye 👋")
+            break
+        else:
+            input("\nInvalid choice! Press Enter...")
+
+# ---------- Run ----------
+if __name__ == "__main__":
+    menu()
